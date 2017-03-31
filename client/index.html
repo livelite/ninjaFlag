@@ -4,11 +4,12 @@
 	<meta charset="UTF-8" />
 	<title>Phaser - Making your first game, part 1</title>
 	<script src='phaser-ce/build/phaser.min.js'></script>
+	<script src='js/phaser-arcade-slopes.min.js'></script>
 	<style>
-			body {
-					margin: 0;
-					background: black;
-			}
+		body {
+			margin: 0;
+			background: black;
+		}
 	</style>
 	<script type="text/javascript">
 
@@ -21,8 +22,8 @@
 			game.scale.maxWidth = 1000;
 			game.scale.maxHeight = 800;
 		} else {
-			game.scale.maxWidth = 1920;
-			game.scale.maxHeight = 1080;
+			game.scale.maxWidth = 1000;
+			game.scale.maxHeight = 800;
 		}
 		game.scale.pageAlignHorizontally = true;
 		game.scale.pageAlignVertically = true;
@@ -33,7 +34,10 @@
 		game.load.spritesheet('dude', 'assets/dude.png', 32, 48);
 		game.load.spritesheet('baddie', 'assets/baddie.png', 32, 32);	
 		game.load.spritesheet('bullet', 'assets/rgblaser.png', 4, 4);	
-		game.load.audio('blaster', 'assets/turtle.mp3')	
+		game.load.audio('blaster', 'assets/turtle.mp3')
+		game.load.tilemap('tilemap', 'assets/level.json', null, Phaser.Tilemap.TILED_JSON)
+		game.load.image('tiles', 'assets/ninjaTiles.png')
+		game.load.image('collision', 'assets/collision.png')
 	}
 	var platforms;
 	var multiJump = 0;
@@ -42,41 +46,35 @@
 	var fireButton;
 
 	function create() {
+		game.plugins.add(Phaser.Plugin.ArcadeSlopes)
+
 		//  We're going to be using physics, so enable the Arcade Physics system
 		game.physics.startSystem(Phaser.Physics.ARCADE);
 
 		//  A simple background for our game
-		game.add.sprite(0, 0, 'sky');
+		game.stage.backgroundColor = "#a9f0ff";
+		background = game.add.tileSprite(0, 0, 800, 600, 'sky');
+		background.fixedToCamera = true
 
-		//  The platforms group contains the ground and the 2 ledges we can jump on
-		platforms = game.add.group();
+		map = game.add.tilemap('tilemap')
+		map.addTilesetImage('collision', 'collision')	
+		map.addTilesetImage('ninjaTileset', 'tiles')	
+
+		collisionLayer = map.createLayer('CollisionLayer')
+		collisionLayer.visible = false
+		backgroundLayer = map.createLayer('BackgroundLayer')
+		groundLayer = map.createLayer('GroundLayer')
+		ladderLayer = map.createLayer('LadderLayer')
+
+		groundLayer.resizeWorld()
+
+		map.setCollisionBetween(1, 1000, true, 'CollisionLayer')
 
 		players = game.add.group();
 
-		//  We will enable physics for any object that is created in this group
-		platforms.enableBody = true;
-
-		// Here we create the ground.
-		var ground = platforms.create(0, game.world.height - 64, 'ground');
-
-		//  Scale it to fit the width of the game (the original sprite is 400x32 in size)
-		ground.scale.setTo(2, 2);
-
-		//  This stops it from falling away when you jump on it
-		ground.body.immovable = true;
-
-		//  Now let's create two ledges
-		var ledge = platforms.create(400, 400, 'ground');
-
-		ledge.body.immovable = true;
-
-		ledge = platforms.create(-150, 250, 'ground');
-
-		ledge.body.immovable = true;
-
 		// The player and its settings
-		player = players.create(32, game.world.height - 150, 'dude');
-		player2 = players.create(96, game.world.height - 150, 'baddie');
+		player = players.create(32, 300, 'dude');
+		player2 = players.create(96, 300, 'baddie');
 
 		//  We need to enable physics on the player
 		game.physics.arcade.enable(player);
@@ -97,6 +95,7 @@
 		player2.animations.add('left', [0, 1], 10, true);
 		player2.animations.add('right', [2, 3], 10, true);
 
+		game.camera.follow(player)
 
 		cursors = game.input.keyboard.createCursorKeys();
 		fireButton = this.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR);
@@ -113,7 +112,6 @@
 		weapon.fireAngle = Phaser.ANGLE_RIGHT
 		weapon.trackSprite(player, 24, 35, false)
 
-
 		//  Here we'll create 12 of them evenly spaced apart
 		for (var i = 0; i < 12; i++)
 		{
@@ -127,17 +125,20 @@
 				star.body.bounce.y = 0.7 + Math.random() * 0.2;
 		}
 
-		scoreText = game.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
+		scoreText = game.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
+		scoreText.fixedToCamera = true
 
 		blaster = game.add.audio('blaster')
 		game.sound.setDecodedCallback([blaster], function(){}, this)
 	}
 
 	function update() {
-		//  Collide the player and the stars with the platforms
-		var hitPlatform = game.physics.arcade.collide(players, platforms);
-		var hitPlayer = game.physics.arcade.collide(player, player2);
+		// move background
+		background.tilePosition.x -= 1
 
+		//  Collide the player and the stars with the platforms
+		var hitPlatform = game.physics.arcade.collide(players, collisionLayer);
+		var hitPlayer = game.physics.arcade.collide(player, player2);
 
 		//  Reset the players velocity (movement)
 		player.body.velocity.x = 0;
@@ -206,7 +207,7 @@
 			multiJump = 0
 		}
 
-		game.physics.arcade.collide(stars, platforms);
+		game.physics.arcade.collide(stars, collisionLayer);
 		game.physics.arcade.overlap(player2, stars, collectStar, null, this);
 
 		//  Allow the player to jump if they are touching the ground.  (player.body.touching.down && hitPlatform)
@@ -226,18 +227,18 @@
 				weapon.fire()
 		}
 
-		game.physics.arcade.collide(stars, platforms);
+		game.physics.arcade.collide(stars, collisionLayer);
 		game.physics.arcade.overlap(player, stars, collectStar, null, this);
 	}
 
 	function collectStar (player, star) {
 
-			// Removes the star from the screen
-			star.kill();
+		// Removes the star from the screen
+		star.kill();
 
-			//  Add and update the score
-			score += 10;
-			scoreText.text = 'Score: ' + score;
+		//  Add and update the score
+		score += 10;
+		scoreText.text = 'Score: ' + score;
 	}
 
 	</script>
