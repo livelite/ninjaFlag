@@ -9,16 +9,24 @@
 					margin: 0;
 					background: black;
 			}
-			.container {
-				width: 70%;
-				margin: 0 auto;
-			}
 	</style>
 	<script type="text/javascript">
 
 	var game = new Phaser.Game(800, 600, Phaser.AUTO, 'game', { preload: preload, create: create, update: update });
 
 	function preload() {
+		
+		game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+		if (game.device.desktop) {
+			game.scale.maxWidth = 1000;
+			game.scale.maxHeight = 800;
+		} else {
+			game.scale.maxWidth = 1920;
+			game.scale.maxHeight = 1080;
+		}
+		game.scale.pageAlignHorizontally = true;
+		game.scale.pageAlignVertically = true;
+		game.stage.smoothed = false;
 		game.load.image('sky', 'assets/sky.png');
 		game.load.image('ground', 'assets/platform.png');
 		game.load.image('star', 'assets/star.png');
@@ -215,7 +223,7 @@
 		if (fireButton.isDown) {
 				if (!blaster.isPlaying)
 					blaster.play()
-		    weapon.fire()
+				weapon.fire()
 		}
 
 		game.physics.arcade.collide(stars, platforms);
@@ -236,10 +244,8 @@
 
 </head>
 <body>
-	<div class="container">
-		<div id="game">
-		
-		</div>
+	<div id="game">
+	
 	</div>
 </body>
 </html>
