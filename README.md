@@ -17,7 +17,7 @@ nodemon server
 ```
 
 Open your browser to:
-http://localhost
+http://localhost:8000
 
 ## Built With
 
