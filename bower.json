@@ -1,0 +1,20 @@
+{
+  "name": "ninjaFlag",
+  "description": "",
+  "main": "server.js",
+  "authors": [
+    "Rytis George <rytis@liteso.com>"
+  ],
+  "license": "ISC",
+  "homepage": "https://github.com/livelite/ninjaFlag",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "phaser-ce": "^2.7.5"
+  }
+}
