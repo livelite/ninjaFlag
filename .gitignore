@@ -1,4 +1,8 @@
 *.DS_Store
-bower_components/
-node_modules/
-
+bower_components/*
+!bower_components/phaser-ce
+bower_components/phaser-ce/*
+!bower_components/phaser-ce/build
+bower_components/phaser-ce/build/*
+!bower_components/phaser-ce/build/phaser.min.js
+node_modules/*

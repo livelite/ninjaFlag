@@ -10,8 +10,9 @@ https://livelite.github.io/ninjaFlag/client/
 
 ```
 git clone https://github.com/livelite/ninjaFlag.git
-npm install
+cd ninjaFlag
 bower install
+npm install
 nodemon server
 ```
 
