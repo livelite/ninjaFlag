@@ -4,7 +4,7 @@ A multiplayer capture the flag game played in the browser.
 
 ## Demo
 
-https://livelite.github.io/ninjaFlag/client/
+https://livelite.github.io/ninjaFlag
 
 ## Run locally on NodeJS
 
