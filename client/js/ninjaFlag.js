@@ -23,11 +23,30 @@ function preload() {
 	game.load.image('tiles', 'assets/ninjaTiles.png')
 	game.load.image('collision', 'assets/collision.png')
 }
-var platforms
+
+// hud
+var scoreText
+
+// layers
+var collisionLayer
+
+// sprites
+var players
+var player
+var player2
+var stars
+var weapon
+
+// controls
+var cursors
+var fireButton
+
+// sounds
+var blaster
+
+// game variables
 var multiJump = 0
 var score = 0
-var scoreText
-var fireButton
 
 function create() {
 	// A phaser plugin for Arcade Physics which allows going down slopes (like ninja physics)
@@ -47,45 +66,45 @@ function create() {
 
 	collisionLayer = map.createLayer('CollisionLayer')
 	collisionLayer.visible = false
-	backgroundLayer = map.createLayer('BackgroundLayer')
-	groundLayer = map.createLayer('GroundLayer')
-	ladderLayer = map.createLayer('LadderLayer')
+	var backgroundLayer = map.createLayer('BackgroundLayer')
+	var groundLayer = map.createLayer('GroundLayer')
+	var ladderLayer = map.createLayer('LadderLayer')
 
 	groundLayer.resizeWorld()
 
 	map.setCollisionBetween(1, 1000, true, 'CollisionLayer')
 
-	players = game.add.group();
+	players = game.add.group()
 
 	// The player and its settings
-	player = players.create(32, 300, 'dude');
-	player2 = players.create(96, 300, 'baddie');
+	player = players.create(32, 300, 'dude')
+	player2 = players.create(96, 300, 'baddie')
 
 	//  We need to enable physics on the player
-	game.physics.arcade.enable(player);
-	game.physics.arcade.enable(player2);		
+	game.physics.arcade.enable(player)
+	game.physics.arcade.enable(player2)
 
 	//  Player physics properties. Give the little guy a slight bounce.
-	player.body.bounce.y = 0.3;
-	player.body.gravity.y = 300;
-	player.body.collideWorldBounds = true;
-	player2.body.bounce.y = 0.4;
-	player2.body.gravity.y = 300;
-	player2.body.collideWorldBounds = true;
+	player.body.bounce.y = 0.3
+	player.body.gravity.y = 300
+	player.body.collideWorldBounds = true
+	player2.body.bounce.y = 0.4
+	player2.body.gravity.y = 300
+	player2.body.collideWorldBounds = true
 
 
 	//  Our two animations, walking left and right.
-	player.animations.add('left', [0, 1, 2, 3], 10, true);
-	player.animations.add('right', [5, 6, 7, 8], 10, true);
-	player2.animations.add('left', [0, 1], 10, true);
-	player2.animations.add('right', [2, 3], 10, true);
+	player.animations.add('left', [0, 1, 2, 3], 10, true)
+	player.animations.add('right', [5, 6, 7, 8], 10, true)
+	player2.animations.add('left', [0, 1], 10, true)
+	player2.animations.add('right', [2, 3], 10, true)
 
 	game.camera.follow(player)
 
-	cursors = game.input.keyboard.createCursorKeys();
-	fireButton = this.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR);
+	cursors = game.input.keyboard.createCursorKeys()
+	fireButton = this.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR)
 
-	stars = game.add.group();
+	stars = game.add.group()
 
 	stars.enableBody = true;
 
@@ -98,19 +117,18 @@ function create() {
 	weapon.trackSprite(player, 24, 35, false)
 
 	//  Here we'll create 12 of them evenly spaced apart
-	for (var i = 0; i < 12; i++)
-	{
-			//  Create a star inside of the 'stars' group
-			var star = stars.create(i * 70, 0, 'star');
+	for (var i = 0; i < 12; i++) {
+		//  Create a star inside of the 'stars' group
+		var star = stars.create(i * 70, 0, 'star');
 
-			//  Let gravity do its thing
-			star.body.gravity.y = 6;
+		//  Let gravity do its thing
+		star.body.gravity.y = 6;
 
-			//  This just gives each star a slightly random bounce value
-			star.body.bounce.y = 0.7 + Math.random() * 0.2;
+		//  This just gives each star a slightly random bounce value
+		star.body.bounce.y = 0.7 + Math.random() * 0.2;
 	}
 
-	scoreText = game.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
+	scoreText = game.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' })
 	scoreText.fixedToCamera = true
 
 	blaster = game.add.audio('blaster')
@@ -119,70 +137,62 @@ function create() {
 
 function update() {
 	//  Collide the player and the stars with the platforms
-	var hitPlatform = game.physics.arcade.collide(players, collisionLayer);
-	var hitPlayer = game.physics.arcade.collide(player, player2);
+	var hitPlatform = game.physics.arcade.collide(players, collisionLayer)
+	var hitPlayer = game.physics.arcade.collide(player, player2)
 
 	//  Reset the players velocity (movement)
-	player.body.velocity.x = 0;
+	player.body.velocity.x = 0
 
-	if (cursors.left.isDown)
-	{
-			//  Move to the left
-			player.body.velocity.x = -200;
-			player.animations.play('left');
-			weapon.fireAngle = Phaser.ANGLE_LEFT
-			weapon.trackSprite(player, 0, 35, false)
+	if (cursors.left.isDown) {
+		//  Move to the left
+		player.body.velocity.x = -200
+		player.animations.play('left')
+		weapon.fireAngle = Phaser.ANGLE_LEFT
+		weapon.trackSprite(player, 0, 35, false)
 	}
-	else if (cursors.right.isDown)
-	{
-			//  Move to the right
-			player.body.velocity.x = 200;
-			player.animations.play('right');
-			weapon.fireAngle = Phaser.ANGLE_RIGHT
-			weapon.trackSprite(player, 24, 35, false)
+	else if (cursors.right.isDown) {
+		//  Move to the right
+		player.body.velocity.x = 200;
+		player.animations.play('right');
+		weapon.fireAngle = Phaser.ANGLE_RIGHT
+		weapon.trackSprite(player, 24, 35, false)
 	}
-	else
-	{
-			//  Stand still
-			player.animations.stop();
-			player.frame = 4;
+	else {
+		//  Stand still
+		player.animations.stop();
+		player.frame = 4;
 	}
 
 	//  Allow the player to jump if they are touching the ground.  (player.body.touching.down && hitPlatform)
-	if (cursors.up.isDown && (hitPlatform || multiJump < 10))
-	{
-			player.body.velocity.y = -250;
-			multiJump++
+	if (cursors.up.isDown && (hitPlatform || multiJump < 10)) {
+		player.body.velocity.y = -250;
+		multiJump++
 	}
 
 	//  Reset the players velocity (movement)
 	player2.body.velocity.x = 0;
 
-	if (cursors.left.isDown)
-	{
-			//  Move to the left
-			player2.body.velocity.x = -200;
+	if (cursors.left.isDown) {
+		//  Move to the left
+		player2.body.velocity.x = -200;
 
-			player2.animations.play('left');
+		player2.animations.play('left');
 	}
-	else if (cursors.right.isDown)
-	{
-			//  Move to the right
-			player2.body.velocity.x = 200;
+	else if (cursors.right.isDown) {
+		//  Move to the right
+		player2.body.velocity.x = 200;
 
-			player2.animations.play('right');
+		player2.animations.play('right');
 	}
-	else
-	{
-			//  Stand still
-			player2.animations.stop();
+	else {
+		//  Stand still
+		player2.animations.stop();
 	}
 
 	//  Allow the player to jump if they are touching the ground.  (player.body.touching.down && hitPlatform)
-	if (cursors.up.isDown && (hitPlatform || multiJump < 10))
-	{
-			player2.body.velocity.y = -250;
-			multiJump++
+	if (cursors.up.isDown && (hitPlatform || multiJump < 10)) {
+		player2.body.velocity.y = -250;
+		multiJump++
 	}
 
 	if (player2.body.touching.down && hitPlatform) {
@@ -193,10 +203,9 @@ function update() {
 	game.physics.arcade.overlap(player2, stars, collectStar, null, this);
 
 	//  Allow the player to jump if they are touching the ground.  (player.body.touching.down && hitPlatform)
-	if (cursors.up.isDown && (hitPlatform || multiJump < 10))
-	{
-			player.body.velocity.y = -250;
-			multiJump++
+	if (cursors.up.isDown && (hitPlatform || multiJump < 10)) {
+		player.body.velocity.y = -250
+		multiJump++
 	}
 
 	if (player.body.touching.down && hitPlatform) {
@@ -204,9 +213,9 @@ function update() {
 	}
 
 	if (fireButton.isDown) {
-			if (!blaster.isPlaying)
-				blaster.play()
-			weapon.fire()
+		if (!blaster.isPlaying)
+			blaster.play()
+		weapon.fire()
 	}
 
 	game.physics.arcade.collide(stars, collisionLayer);
