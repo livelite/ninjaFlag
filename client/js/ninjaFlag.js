@@ -1,6 +1,9 @@
 var game = new Phaser.Game(800, 600, Phaser.AUTO, 'game', { preload: preload, create: create, update: update })
 
 function preload() {
+	// don't pause the game when losing focus
+	game.stage.disableVisibilityChange = true
+
 	game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL
 	if (game.device.desktop) {
 		game.scale.maxWidth = 1000
@@ -31,9 +34,10 @@ var scoreText
 var collisionLayer
 
 // sprites
-var players
 var player
-var player2
+var players = {}
+var playerGroup
+var playersGroup
 var stars
 var weapon
 
@@ -45,8 +49,10 @@ var fireButton
 var blaster
 
 // game variables
-var multiJump = 0
 var score = 0
+
+// multiplayer
+var socket
 
 function create() {
 	// A phaser plugin for Arcade Physics which allows going down slopes (like ninja physics)
@@ -74,30 +80,23 @@ function create() {
 
 	map.setCollisionBetween(1, 1000, true, 'CollisionLayer')
 
-	players = game.add.group()
+	playerGroup = game.add.group()
+	playersGroup = game.add.group()
 
 	// The player and its settings
-	player = players.create(32, 300, 'dude')
-	player2 = players.create(96, 300, 'baddie')
+	player = playerGroup.create(32,32, 'dude')
 
 	//  We need to enable physics on the player
 	game.physics.arcade.enable(player)
-	game.physics.arcade.enable(player2)
 
 	//  Player physics properties. Give the little guy a slight bounce.
-	player.body.bounce.y = 0.3
+	player.body.bounce.y = 0.2
 	player.body.gravity.y = 300
 	player.body.collideWorldBounds = true
-	player2.body.bounce.y = 0.4
-	player2.body.gravity.y = 300
-	player2.body.collideWorldBounds = true
-
 
 	//  Our two animations, walking left and right.
 	player.animations.add('left', [0, 1, 2, 3], 10, true)
 	player.animations.add('right', [5, 6, 7, 8], 10, true)
-	player2.animations.add('left', [0, 1], 10, true)
-	player2.animations.add('right', [2, 3], 10, true)
 
 	game.camera.follow(player)
 
@@ -133,85 +132,142 @@ function create() {
 
 	blaster = game.add.audio('blaster')
 	game.sound.setDecodedCallback([blaster], function(){}, this)
+
+	// connect to server
+	socket = io.connect()
+
+	// create and update other players
+	socket.on('players', function(playersUpdate) {
+		for (var player in playersUpdate) {
+			if (player in players) {
+				// update player
+				players[player].body.x = playersUpdate[player].x
+				players[player].body.y = playersUpdate[player].y
+			} else {
+				// add a new player
+				newPlayer = playersGroup.create(playersUpdate[player].x, playersUpdate[player].y, 'dude')
+				game.physics.arcade.enable(newPlayer)
+				newPlayer.body.bounce.y = 0.2
+				newPlayer.body.gravity.y = 300
+				newPlayer.body.collideWorldBounds = true
+				newPlayer.animations.add('left', [0, 1, 2, 3], 10, true)
+				newPlayer.animations.add('right', [5, 6, 7, 8], 10, true)
+				newPlayer.frame = 4
+				players[player] = newPlayer
+			}
+		}
+	})
+
+	// update player position
+	// socket.on('p', function(playerUpdate) {
+	// 	if (playerUpdate.n in players) {
+	// 		players[playerUpdate.n].x = playerUpdate.x
+	// 		players[playerUpdate.n].y = playerUpdate.y
+	// 		// if (playerUpdate.d == 'l') {
+
+	// 		// }
+	// 	}
+	// })
+
+	// update player position
+	socket.on('p', function(playerUpdate) {
+		if (playerUpdate.n in players) {
+			//  Reset the player velocity (movement)
+			players[playerUpdate.n].body.velocity.x = 0
+			if (playerUpdate.a == 'r') {
+				// move right
+				players[playerUpdate.n].body.velocity.x = 200
+				players[playerUpdate.n].animations.play('right')
+			} else if (playerUpdate.a == 'l') {
+				// move left
+				players[playerUpdate.n].body.velocity.x = -200
+				players[playerUpdate.n].animations.play('left')
+			} else if (playerUpdate.a == 'u') {
+				// jump up
+				console.log('jump')
+				players[playerUpdate.n].body.velocity.y = -250
+			} else if (playerUpdate.a == 's') {
+				// stand still
+				players[playerUpdate.n].animations.stop();
+				players[playerUpdate.n].frame = 4
+			} else if (playerUpdate.a == 'c') {
+				// coordinate update
+				players[playerUpdate.n].x = playerUpdate.x
+				players[playerUpdate.n].y = playerUpdate.y
+			}
+		}
+	})
+
+	// on player disconnect
+	socket.on('disc', function(playerDisconnected) {
+		// remove player from the screen
+		if (playerDisconnected.n in players) {
+			players[playerDisconnected.n].kill()
+			delete players[playerDisconnected.n]
+		}
+	})
 }
 
-function update() {
-	//  Collide the player and the stars with the platforms
-	var hitPlatform = game.physics.arcade.collide(players, collisionLayer)
-	var hitPlayer = game.physics.arcade.collide(player, player2)
+// if no button is pressed, send one stand command
+var standSent = false
 
-	//  Reset the players velocity (movement)
+// send a coordinate update upon hitting the floor
+var hitFloorSent = false
+
+function update() {
+	// collide with platform and other players
+	game.physics.arcade.collide(playerGroup, collisionLayer)
+	game.physics.arcade.collide(playersGroup, collisionLayer)
+	var hitPlayer = game.physics.arcade.collide(playerGroup, playersGroup)
+
+	// reset the player velocity (movement)
 	player.body.velocity.x = 0
 
 	if (cursors.left.isDown) {
-		//  Move to the left
+		standSent = false
+		broadcastPlayer('l')
+		//  move to the left
 		player.body.velocity.x = -200
 		player.animations.play('left')
 		weapon.fireAngle = Phaser.ANGLE_LEFT
 		weapon.trackSprite(player, 0, 35, false)
 	}
 	else if (cursors.right.isDown) {
-		//  Move to the right
-		player.body.velocity.x = 200;
-		player.animations.play('right');
+		standSent = false
+		broadcastPlayer('r')
+		//  move to the right
+		player.body.velocity.x = 200
+		player.animations.play('right')
 		weapon.fireAngle = Phaser.ANGLE_RIGHT
 		weapon.trackSprite(player, 24, 35, false)
 	}
 	else {
-		//  Stand still
+		//  stand still
+		if (!standSent) {
+			// if no button is pressed, send stand command once
+			broadcastPlayer('s')
+			standSent = true
+		}
 		player.animations.stop();
-		player.frame = 4;
+		player.frame = 4
 	}
 
-	//  Allow the player to jump if they are touching the ground.  (player.body.touching.down && hitPlatform)
-	if (cursors.up.isDown && (hitPlatform || multiJump < 10)) {
-		player.body.velocity.y = -250;
-		multiJump++
+	if (player.body.onFloor() || hitPlayer) {
+		// send a coordinate update upon hitting the floor
+		if (!hitFloorSent) {
+			broadcastPlayer('c')
+			hitFloorSent = true
+		}
+
+		// allow the player to jump if they are touching the ground
+		if (cursors.up.isDown) {
+			broadcastPlayer('u')
+			hitFloorSent = false
+			player.body.velocity.y = -250
+		}
 	}
 
-	//  Reset the players velocity (movement)
-	player2.body.velocity.x = 0;
-
-	if (cursors.left.isDown) {
-		//  Move to the left
-		player2.body.velocity.x = -200;
-
-		player2.animations.play('left');
-	}
-	else if (cursors.right.isDown) {
-		//  Move to the right
-		player2.body.velocity.x = 200;
-
-		player2.animations.play('right');
-	}
-	else {
-		//  Stand still
-		player2.animations.stop();
-	}
-
-	//  Allow the player to jump if they are touching the ground.  (player.body.touching.down && hitPlatform)
-	if (cursors.up.isDown && (hitPlatform || multiJump < 10)) {
-		player2.body.velocity.y = -250;
-		multiJump++
-	}
-
-	if (player2.body.touching.down && hitPlatform) {
-		multiJump = 0
-	}
-
-	game.physics.arcade.collide(stars, collisionLayer);
-	game.physics.arcade.overlap(player2, stars, collectStar, null, this);
-
-	//  Allow the player to jump if they are touching the ground.  (player.body.touching.down && hitPlatform)
-	if (cursors.up.isDown && (hitPlatform || multiJump < 10)) {
-		player.body.velocity.y = -250
-		multiJump++
-	}
-
-	if (player.body.touching.down && hitPlatform) {
-		multiJump = 0
-	}
-
+	// fire weapon
 	if (fireButton.isDown) {
 		if (!blaster.isPlaying)
 			blaster.play()
@@ -230,4 +286,15 @@ function collectStar (player, star) {
 	//  Add and update the score
 	score += 10;
 	scoreText.text = 'Score: ' + score;
+}
+
+function broadcastPlayer(action) {
+	var playerUpdated = {
+		x: parseInt(player.body.x),
+		y: parseInt(player.body.y),
+		a: action
+	}
+
+	// emit player update
+	socket.emit('p', playerUpdated)
 }
