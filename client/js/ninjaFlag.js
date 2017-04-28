@@ -20,9 +20,10 @@ function preload() {
 	game.load.image('star', 'assets/star.png')
 	game.load.spritesheet('dude', 'assets/dude.png', 32, 48)
 	game.load.spritesheet('baddie', 'assets/baddie.png', 32, 32)
+	game.load.spritesheet('flag', 'assets/flag.png', 24, 28)
 	game.load.spritesheet('bullet', 'assets/rgblaser.png', 4, 4)
 	game.load.audio('blaster', 'assets/turtle.mp3')
-	game.load.tilemap('tilemap', 'assets/level.json', null, Phaser.Tilemap.TILED_JSON)
+	game.load.tilemap('tilemap', 'assets/ninja3.json', null, Phaser.Tilemap.TILED_JSON)
 	game.load.image('tiles', 'assets/ninjaTiles.png')
 	game.load.image('collision', 'assets/collision.png')
 }
@@ -32,14 +33,18 @@ var scoreText
 
 // layers
 var collisionLayer
+var ladderLayer
 
 // sprites
 var player
 var players = {}
 var playerGroup
 var playersGroup
-var stars
 var weapon
+var items
+
+// items
+var flag
 
 // controls
 var cursors
@@ -53,10 +58,11 @@ var score = 0
 
 // multiplayer
 var socket
+var flagHolder = ''
 
 function create() {
 	// A phaser plugin for Arcade Physics which allows going down slopes (like ninja physics)
-	game.plugins.add(Phaser.Plugin.ArcadeSlopes)
+	// game.plugins.add(Phaser.Plugin.ArcadeSlopes)
 
 	//  We're going to be using physics, so enable the Arcade Physics system
 	game.physics.startSystem(Phaser.Physics.ARCADE);
@@ -74,17 +80,25 @@ function create() {
 	collisionLayer.visible = false
 	var backgroundLayer = map.createLayer('BackgroundLayer')
 	var groundLayer = map.createLayer('GroundLayer')
-	var ladderLayer = map.createLayer('LadderLayer')
+	ladderLayer = map.createLayer('LadderLayer')
 
 	groundLayer.resizeWorld()
 
 	map.setCollisionBetween(1, 1000, true, 'CollisionLayer')
 
+	// add the flag
+	items = game.add.group()
+	items.enableBody = true
+	flag = items.create(2400, 300, 'flag')
+	flag.body.bounce.y = 0.4
+	flag.body.gravity.y = 200
+	flag.body.collideWorldBounds = true
+
 	playerGroup = game.add.group()
 	playersGroup = game.add.group()
 
 	// The player and its settings
-	player = playerGroup.create(32,32, 'dude')
+	player = playerGroup.create(32, 700, 'dude')
 
 	//  We need to enable physics on the player
 	game.physics.arcade.enable(player)
@@ -98,14 +112,12 @@ function create() {
 	player.animations.add('left', [0, 1, 2, 3], 10, true)
 	player.animations.add('right', [5, 6, 7, 8], 10, true)
 
+	// camera follow player around the screen
 	game.camera.follow(player)
 
+	// controls
 	cursors = game.input.keyboard.createCursorKeys()
 	fireButton = this.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR)
-
-	stars = game.add.group()
-
-	stars.enableBody = true;
 
 	weapon = game.add.weapon(1, 'bullet')
 	weapon.setBulletFrames(0, 80, true)
@@ -114,18 +126,6 @@ function create() {
 	weapon.fireRate = 30
 	weapon.fireAngle = Phaser.ANGLE_RIGHT
 	weapon.trackSprite(player, 24, 35, false)
-
-	//  Here we'll create 12 of them evenly spaced apart
-	for (var i = 0; i < 12; i++) {
-		//  Create a star inside of the 'stars' group
-		var star = stars.create(i * 70, 0, 'star');
-
-		//  Let gravity do its thing
-		star.body.gravity.y = 6;
-
-		//  This just gives each star a slightly random bounce value
-		star.body.bounce.y = 0.7 + Math.random() * 0.2;
-	}
 
 	scoreText = game.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' })
 	scoreText.fixedToCamera = true
@@ -153,6 +153,7 @@ function create() {
 				newPlayer.animations.add('left', [0, 1, 2, 3], 10, true)
 				newPlayer.animations.add('right', [5, 6, 7, 8], 10, true)
 				newPlayer.frame = 4
+				newPlayer.actual = {}
 				players[player] = newPlayer
 			}
 		}
@@ -174,6 +175,7 @@ function create() {
 		if (playerUpdate.n in players) {
 			//  Reset the player velocity (movement)
 			players[playerUpdate.n].body.velocity.x = 0
+
 			if (playerUpdate.a == 'r') {
 				// move right
 				players[playerUpdate.n].body.velocity.x = 200
@@ -184,7 +186,6 @@ function create() {
 				players[playerUpdate.n].animations.play('left')
 			} else if (playerUpdate.a == 'u') {
 				// jump up
-				console.log('jump')
 				players[playerUpdate.n].body.velocity.y = -250
 			} else if (playerUpdate.a == 's') {
 				// stand still
@@ -195,6 +196,26 @@ function create() {
 				players[playerUpdate.n].x = playerUpdate.x
 				players[playerUpdate.n].y = playerUpdate.y
 			}
+
+			// compensate for lag inaccuracies
+			if (Math.abs(playerUpdate.x - players[playerUpdate.n].x) > 5) {
+				players[playerUpdate.n].x = playerUpdate.x
+			}
+			if (Math.abs(playerUpdate.x - players[playerUpdate.n].y) > 10) {
+				players[playerUpdate.n].x = playerUpdate.x
+			}	
+		}
+	})
+
+	// there is a new flag holder
+	socket.on('flagHolder', function(playerUpdate) {
+		flagHolder = playerUpdate.flagHolder
+		if (flagHolder == socket.io.engine.id) {
+			// current user has the flag
+
+		} else { // another player has the flag
+
+			gotFlag = false
 		}
 	})
 
@@ -214,18 +235,60 @@ var standSent = false
 // send a coordinate update upon hitting the floor
 var hitFloorSent = false
 
+// send less data
+var leftSent = false
+var rightSent = false
+
 function update() {
 	// collide with platform and other players
 	game.physics.arcade.collide(playerGroup, collisionLayer)
 	game.physics.arcade.collide(playersGroup, collisionLayer)
 	var hitPlayer = game.physics.arcade.collide(playerGroup, playersGroup)
 
+	game.physics.arcade.collide(items, collisionLayer)
+	game.physics.arcade.overlap(player, items, gotItem, null, this)
+
+	// game.physics.arcade.collide(stars, collisionLayer)
+	// game.physics.arcade.overlap(player, stars, collectStar, null, this)
+
+	// ladder overlap
+	// var onLadder = game.physics.arcade.collide(playerGroup, collisionLayer)
+	// console.log(onLadder)
+	// if (onLadder) {
+	// 	console.log('on ladder')
+	// 	player.body.moves = false
+	// } else {
+	// 	console.log('off ladder')
+	// 	player.body.moves = true
+	// }
+
+	// flag follows flagHolder
+	if (flagHolder == socket.io.engine.id) {
+		// current user has the flag
+		flag.body.x = player.body.x
+		flag.body.y = player.body.y - 16
+
+	} else { // another player has the flag
+
+		if (players[flagHolder]) {
+			flag.body.x = players[flagHolder].body.x
+			flag.body.y = players[flagHolder].body.y - 16
+		}
+	}
+
 	// reset the player velocity (movement)
 	player.body.velocity.x = 0
 
 	if (cursors.left.isDown) {
 		standSent = false
-		broadcastPlayer('l')
+		rightSent = false
+
+		// broadcast every other left when held down
+		leftSent = !leftSent
+		if (leftSent) {
+			broadcastPlayer('l')
+		}
+		
 		//  move to the left
 		player.body.velocity.x = -200
 		player.animations.play('left')
@@ -234,7 +297,13 @@ function update() {
 	}
 	else if (cursors.right.isDown) {
 		standSent = false
-		broadcastPlayer('r')
+		leftSent = false
+		// broadcast every other left when held down
+		rightSent = !rightSent
+		if (rightSent) {
+			broadcastPlayer('r')
+		}
+		
 		//  move to the right
 		player.body.velocity.x = 200
 		player.animations.play('right')
@@ -254,6 +323,7 @@ function update() {
 
 	if (player.body.onFloor() || hitPlayer) {
 		// send a coordinate update upon hitting the floor
+		standSent = false
 		if (!hitFloorSent) {
 			broadcastPlayer('c')
 			hitFloorSent = true
@@ -261,6 +331,7 @@ function update() {
 
 		// allow the player to jump if they are touching the ground
 		if (cursors.up.isDown) {
+			standSent = false
 			broadcastPlayer('u')
 			hitFloorSent = false
 			player.body.velocity.y = -250
@@ -269,23 +340,30 @@ function update() {
 
 	// fire weapon
 	if (fireButton.isDown) {
+		standSent = false
 		if (!blaster.isPlaying)
 			blaster.play()
 		weapon.fire()
 	}
-
-	game.physics.arcade.collide(stars, collisionLayer);
-	game.physics.arcade.overlap(player, stars, collectStar, null, this);
 }
 
-function collectStar (player, star) {
+var gotFlag = false
 
-	// Removes the star from the screen
-	star.kill();
+function gotItem(player, item) {
+	//console.log('got item')
+	// player got the item
+	//item.kill()
+	if (!gotFlag) {
+		socket.emit('gotFlag')
+		gotFlag = true
+	}
+	// else {
+	// 	console.log('got something else')
+	// }
 
 	//  Add and update the score
-	score += 10;
-	scoreText.text = 'Score: ' + score;
+	// score += 10
+	// scoreText.text = 'Score: ' + score
 }
 
 function broadcastPlayer(action) {
