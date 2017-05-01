@@ -50,7 +50,7 @@
         }, 
         {
          "draworder":"topdown",
-         "height":40,
+         "height":0,
          "name":"Objects",
          "objects":[
                 {
@@ -78,7 +78,7 @@
                 {
                  "height":31,
                  "id":7,
-                 "name":"PlayerSpawn",
+                 "name":"playerSpawn",
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -89,7 +89,7 @@
          "opacity":1,
          "type":"objectgroup",
          "visible":true,
-         "width":200,
+         "width":0,
          "x":0,
          "y":0
         }],

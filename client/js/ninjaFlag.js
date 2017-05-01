@@ -92,7 +92,6 @@ function create() {
 	if (map.objects.Objects) {
 		const objects = map.objects.Objects
 		for (var object in objects) {
-			console.log(objects[object].name)
 			if(objects[object].name == 'flagDrop')
 				flagDrop = objects[object]
 			if(objects[object].name == 'flagSpawn')
@@ -100,7 +99,6 @@ function create() {
 			if(objects[object].name == 'playerSpawn')
 				playerSpawn = objects[object]
 		}
-		console.log(playerSpawn)
 	}
 
 	groundLayer.resizeWorld()

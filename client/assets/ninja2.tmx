@@ -29,6 +29,6 @@
  <objectgroup name="Objects">
   <object id="1" name="flagDrop" x="596" y="577" width="21" height="26"/>
   <object id="5" name="flagSpawn" x="2400" y="865" width="28" height="31"/>
-  <object id="7" name="PlayerSpawn" x="36" y="288" width="22" height="31"/>
+  <object id="7" name="playerSpawn" x="36" y="288" width="22" height="31"/>
  </objectgroup>
 </map>
