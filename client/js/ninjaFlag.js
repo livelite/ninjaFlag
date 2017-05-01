@@ -60,6 +60,11 @@ var score = 0
 var socket
 var flagHolder = ''
 
+// objects
+var flagDrop
+var flagSpawn
+var playerSpawn
+
 function create() {
 	// A phaser plugin for Arcade Physics which allows going down slopes (like ninja physics)
 	// game.plugins.add(Phaser.Plugin.ArcadeSlopes)
@@ -82,6 +87,22 @@ function create() {
 	var groundLayer = map.createLayer('GroundLayer')
 	ladderLayer = map.createLayer('LadderLayer')
 
+
+
+	if (map.objects.Objects) {
+		const objects = map.objects.Objects
+		for (var object in objects) {
+			console.log(objects[object].name)
+			if(objects[object].name == 'flagDrop')
+				flagDrop = objects[object]
+			if(objects[object].name == 'flagSpawn')
+				flagSpawn = objects[object]
+			if(objects[object].name == 'playerSpawn')
+				playerSpawn = objects[object]
+		}
+		console.log(playerSpawn)
+	}
+
 	groundLayer.resizeWorld()
 
 	map.setCollisionBetween(1, 1000, true, 'CollisionLayer')
@@ -89,7 +110,7 @@ function create() {
 	// add the flag
 	items = game.add.group()
 	items.enableBody = true
-	flag = items.create(2400, 300, 'flag')
+	flag = items.create(flagSpawn.x, flagSpawn.y, 'flag')
 	flag.body.bounce.y = 0.4
 	flag.body.gravity.y = 200
 	flag.body.collideWorldBounds = true
@@ -98,7 +119,7 @@ function create() {
 	playersGroup = game.add.group()
 
 	// The player and its settings
-	player = playerGroup.create(32, 700, 'dude')
+	player = playerGroup.create(playerSpawn.x, playerSpawn.y, 'dude')
 
 	//  We need to enable physics on the player
 	game.physics.arcade.enable(player)
@@ -218,6 +239,21 @@ function create() {
 			gotFlag = false
 		}
 	})
+
+	// score flag return
+	if (Math.abs(player.body.x - flagDrop.x) < 10 && Math.abs(player.body.y - flagDrop.y) < 20) {
+		// update the score
+		score += 1
+		scoreText.text = 'Score: ' + score
+
+		// reset player location
+		player.body.x = playerSpawn.x
+		player.body.y = playerSpawn.y
+
+		// reset flag location
+		flag.body.x = flagDrop.x
+		flag.body.y = flagDrop.y
+	}
 
 	// on player disconnect
 	socket.on('disc', function(playerDisconnected) {

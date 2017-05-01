@@ -47,8 +47,53 @@
          "width":200,
          "x":0,
          "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "height":40,
+         "name":"Objects",
+         "objects":[
+                {
+                 "height":26,
+                 "id":1,
+                 "name":"flagDrop",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":21,
+                 "x":596,
+                 "y":577
+                }, 
+                {
+                 "height":31,
+                 "id":5,
+                 "name":"flagSpawn",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":28,
+                 "x":2400,
+                 "y":865
+                }, 
+                {
+                 "height":31,
+                 "id":7,
+                 "name":"PlayerSpawn",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":22,
+                 "x":36,
+                 "y":288
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "width":200,
+         "x":0,
+         "y":0
         }],
- "nextobjectid":1,
+ "nextobjectid":9,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tileheight":32,
