@@ -21,7 +21,9 @@ http://localhost:8000
 
 ## Built With
 
-* [Phaser](https://phaser.io/) - A fast, fun and free open source HTML5 game framework
+* [Node.js](https://nodejs.org)
+* [socket.io](https://socket.io)
+* [Phaser](https://phaser.io) - A fast, fun and free open source HTML5 game framework
 
 ## Authors
 
